@@ -12,7 +12,6 @@ apiVersion: v1
 kind: Service
 metadata:
   name: azure-vote-front
-  namespace: vote-arc
 spec:
   ports:
   - port: 80
