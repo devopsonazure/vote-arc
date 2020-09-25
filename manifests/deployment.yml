@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: azure-vote-back
+  namespace: vote-arc
 spec:
   replicas: 1
   selector:
@@ -25,6 +26,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: azure-vote-front
+  namespace: vote-arc
 spec:
   replicas: 1
   selector:
