@@ -64,17 +64,42 @@ def add_security_headers(response):
     response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
     return response
 
+@app.errorhandler(400)
+def bad_request(e):
+    return render_template('error.html', 
+                          title=title, 
+                          error_code=400, 
+                          error_message='Bad Request: ' + str(e)), 400
+
+@app.errorhandler(500)
+def server_error(e):
+    return render_template('error.html', 
+                          title=title, 
+                          error_code=500, 
+                          error_message='Server Error: ' + str(e)), 500
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
 
     if request.method == 'GET':
         try:
             # Get current values
-            vote1 = r.get(button1).decode('utf-8')
-            vote2 = r.get(button2).decode('utf-8')            
-
+            vote1 = r.get(button1)
+            vote2 = r.get(button2)
+            
+            # Handle potential Redis data corruption
+            try:
+                vote1 = int(vote1.decode('utf-8')) if vote1 else 0
+                vote2 = int(vote2.decode('utf-8')) if vote2 else 0
+            except (ValueError, AttributeError):
+                # Reset to 0 if data is corrupted
+                vote1 = 0
+                vote2 = 0
+                r.set(button1, 0)
+                r.set(button2, 0)
+                
             # Return index with values
-            return render_template("index.html", value1=int(vote1), value2=int(vote2), button1=button1, button2=button2, title=title)
+            return render_template("index.html", value1=vote1, value2=vote2, button1=button1, button2=button2, title=title)
         except redis.RedisError:
             abort(500, 'Failed to retrieve vote counts')
 
@@ -95,9 +120,23 @@ def index():
                 # Empty table and return results
                 r.set(button1,0)
                 r.set(button2,0)
-                vote1 = r.get(button1).decode('utf-8')
-                vote2 = r.get(button2).decode('utf-8')
-                return render_template("index.html", value1=int(vote1), value2=int(vote2), button1=button1, button2=button2, title=title)
+                
+                # Get current values and sanitize
+                vote1 = r.get(button1)
+                vote2 = r.get(button2)
+                
+                # Handle potential Redis data corruption
+                try:
+                    vote1 = int(vote1.decode('utf-8')) if vote1 else 0
+                    vote2 = int(vote2.decode('utf-8')) if vote2 else 0
+                except (ValueError, AttributeError):
+                    # Reset to 0 if data is corrupted
+                    vote1 = 0
+                    vote2 = 0
+                    r.set(button1, 0)
+                    r.set(button2, 0)
+                    
+                return render_template("index.html", value1=vote1, value2=vote2, button1=button1, button2=button2, title=title)
             except redis.RedisError:
                 abort(500, 'Failed to reset vote counts')
         
@@ -106,12 +145,23 @@ def index():
                 # Insert vote result into DB
                 r.incr(vote,1)
                 
-                # Get current values
-                vote1 = r.get(button1).decode('utf-8')
-                vote2 = r.get(button2).decode('utf-8')  
+                # Get current values and sanitize
+                vote1 = r.get(button1)
+                vote2 = r.get(button2)
+                
+                # Handle potential Redis data corruption
+                try:
+                    vote1 = int(vote1.decode('utf-8')) if vote1 else 0
+                    vote2 = int(vote2.decode('utf-8')) if vote2 else 0
+                except (ValueError, AttributeError):
+                    # Reset to 0 if data is corrupted
+                    vote1 = 0
+                    vote2 = 0
+                    r.set(button1, 0)
+                    r.set(button2, 0)
                     
                 # Return results
-                return render_template("index.html", value1=int(vote1), value2=int(vote2), button1=button1, button2=button2, title=title)
+                return render_template("index.html", value1=vote1, value2=vote2, button1=button1, button2=button2, title=title)
             except redis.RedisError:
                 abort(500, 'Failed to process vote')
 
